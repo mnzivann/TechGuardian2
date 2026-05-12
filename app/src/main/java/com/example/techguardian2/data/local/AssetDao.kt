@@ -8,8 +8,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AssetDao {
+
+    // Inserta un solo equipo
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAsset(asset: AssetEntity)
+
+    // ¡Esta es la línea que falta! Inserta una lista completa
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllAssets(assets: List<AssetEntity>)
 
     @Query("SELECT * FROM assets ORDER BY id DESC")
     fun getAllAssets(): Flow<List<AssetEntity>>

@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.techguardian2.data.local.AssetDao
 import com.example.techguardian2.data.local.TechDatabase
 import com.example.techguardian2.data.remote.ApiService
+import com.example.techguardian2.data.repository.MainRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -50,4 +51,13 @@ object AppModule {
     fun provideAssetDao(db: TechDatabase): AssetDao {
         return db.assetDao()
     }
+
+@Provides
+@Singleton
+fun provideMainRepository(
+    assetDao: AssetDao,
+    apiService: ApiService
+): MainRepository {
+    return MainRepository(assetDao, apiService)
+}
 
