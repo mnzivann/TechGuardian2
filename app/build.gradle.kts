@@ -66,4 +66,15 @@ dependencies {
     implementation(libs.androidx.room.ktx) // Esto es para usar Coroutines y Flow
     ksp(libs.androidx.room.compiler)
 
+    // Retrofit (Para consumir la API REST)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // OkHttp (Para interceptar peticiones y ver errores en la consola)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // DataStore (Para guardar el Token de seguridad)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
 }
