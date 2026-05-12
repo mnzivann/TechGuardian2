@@ -59,6 +59,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation(libs.hilt.navigation.compose)
+
+    // Dependencias de Room (Base de datos local)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx) // Esto es para usar Coroutines y Flow
+    ksp(libs.androidx.room.compiler)
 
 }
