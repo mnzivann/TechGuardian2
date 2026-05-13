@@ -18,6 +18,7 @@ import com.example.techguardian2.ui.viewmodels.AssetViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssetListScreen(
+    onNavigateToTicket: () -> Unit, // ¡Aquí está el parámetro que solucionará el error rojo!
     viewModel: AssetViewModel = hiltViewModel()
 ) {
     val assetsList by viewModel.assets.collectAsState()
@@ -32,10 +33,10 @@ fun AssetListScreen(
                 )
             )
         },
-        // ¡AQUÍ ESTÁ EL BOTÓN NUEVO!
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.addDummyAsset() }) {
-                Icon(Icons.Filled.Add, contentDescription = "Agregar Prueba")
+            // Le pasamos la instrucción de navegación a este botón
+            FloatingActionButton(onClick = onNavigateToTicket) {
+                Icon(Icons.Filled.Add, contentDescription = "Nuevo Ticket")
             }
         }
     ) { paddingValues ->

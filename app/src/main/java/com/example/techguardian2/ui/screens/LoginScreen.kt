@@ -10,12 +10,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.techguardian2.ui.viewmodels.LoginViewModel
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit // Esta función nos avisará cuando debamos cambiar de pantalla
+    viewModel: LoginViewModel = hiltViewModel(),
+    onLoginSuccess: () -> Unit
 ) {
-    // Variables para guardar lo que el usuario escribe
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -56,7 +58,7 @@ fun LoginScreen(
                 onValueChange = { password = it },
                 label = { Text("Contraseña") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Password Icon") },
-                visualTransformation = PasswordVisualTransformation(), // Oculta la contraseña con puntitos
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -64,9 +66,9 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    // Aquí después conectaremos el DataStore y Retrofit
-                    // Por ahora, solo simularemos que el login es exitoso
-                    onLoginSuccess()
+                    viewModel.performLogin(username, password) {
+                        onLoginSuccess()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
