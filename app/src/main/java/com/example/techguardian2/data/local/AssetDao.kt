@@ -9,13 +9,11 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AssetDao {
 
-    // Inserta un solo equipo
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAsset(asset: AssetEntity)
+    suspend fun insertAsset(asset: AssetEntity): Long
 
-    // ¡Esta es la línea que falta! Inserta una lista completa
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllAssets(assets: List<AssetEntity>)
+    suspend fun insertAllAssets(assets: List<AssetEntity>): List<Long>
 
     @Query("SELECT * FROM assets ORDER BY id DESC")
     fun getAllAssets(): Flow<List<AssetEntity>>
@@ -23,6 +21,7 @@ interface AssetDao {
     @Query("SELECT * FROM assets WHERE id = :id")
     suspend fun getAssetById(id: Int): AssetEntity?
 
+    // Retornamos Int o Long para evitar errores de firma JVM en KSP con Kotlin 2.x
     @Query("DELETE FROM assets WHERE id = :id")
-    suspend fun deleteAssetById(id: Int)
+    suspend fun deleteAssetById(id: Int): Int
 }

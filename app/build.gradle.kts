@@ -77,4 +77,6 @@ dependencies {
     // DataStore (Para guardar el Token de seguridad)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // Íconos de Material Design para Jetpack Compose
+    implementation("androidx.compose.material:material-icons-extended")
 }

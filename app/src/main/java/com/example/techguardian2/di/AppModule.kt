@@ -19,7 +19,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    // Configuración de la Base de Datos (Fase 2)
+    // 1. Base de datos
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): TechDatabase {
@@ -30,34 +30,31 @@ object AppModule {
         ).build()
     }
 
+    // 2. DAO (Aquí es donde marcaba el error porque estaba fuera de estas llaves)
     @Provides
-    fun provideAssetDao(db: TechDatabase): AssetDao = db.assetDao()
+    fun provideAssetDao(db: TechDatabase): AssetDao {
+        return db.assetDao()
+    }
 
-    // Configuración de Retrofit (Fase 3)
+    // 3. Conexión al servidor (Retrofit)
     @Provides
     @Singleton
     fun provideApiService(): ApiService {
-        // Si usas el emulador, usa 10.0.2.2. Si es dispositivo físico, usa tu IP local.
         val baseUrl = "http://10.0.2.2:5001/api/"
-
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
     }
-}
+
+    // 4. Repositorio principal
     @Provides
-    fun provideAssetDao(db: TechDatabase): AssetDao {
-        return db.assetDao()
+    @Singleton
+    fun provideMainRepository(
+        assetDao: AssetDao,
+        apiService: ApiService
+    ): MainRepository {
+        return MainRepository(assetDao, apiService)
     }
-
-@Provides
-@Singleton
-fun provideMainRepository(
-    assetDao: AssetDao,
-    apiService: ApiService
-): MainRepository {
-    return MainRepository(assetDao, apiService)
 }
-
