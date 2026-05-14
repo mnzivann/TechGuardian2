@@ -2,6 +2,8 @@ package com.example.techguardian2.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.techguardian2.data.remote.ApiService
+import com.example.techguardian2.data.remote.LoginRequestDto
 import com.example.techguardian2.data.security.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -9,19 +11,27 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
+    private val apiService: ApiService,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
-    fun performLogin(username: String, password: String, onComplete: () -> Unit) {
+    fun performLogin(username: String, password: String, onComplete: (String) -> Unit) {
         viewModelScope.launch {
-            // Simulamos que el servidor nos dio este token JWT
-            val fakeToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            try {
+                // Hablamos con la API de Java a través de Ngrok
+                val response = apiService.loginUsuario(LoginRequestDto(username, password))
 
-            // Lo guardamos bajo llave en DataStore
-            tokenManager.saveToken(fakeToken)
+                if (response.success) {
+                    // Guardamos el token para futuras peticiones
+                    tokenManager.saveToken(response.token)
 
-            // Avisamos que el proceso terminó para navegar
-            onComplete()
+                    // Le pasamos el ROL a la pantalla para saber a dónde navegar
+                    onComplete(response.role)
+                }
+            } catch (e: Exception) {
+                // Manejo de errores en caso de fallo de red
+                e.printStackTrace()
+            }
         }
     }
 }

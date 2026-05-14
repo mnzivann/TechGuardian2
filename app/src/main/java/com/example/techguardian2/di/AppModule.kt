@@ -36,11 +36,12 @@ object AppModule {
         return db.assetDao()
     }
 
-    // 3. Conexión al servidor (Retrofit)
     @Provides
     @Singleton
     fun provideApiService(): ApiService {
-        val baseUrl = "http://192.168.100.124:5001/api/"
+        // URL pública y segura de Ngrok (ya no importa si cambia tu IP local)
+        val baseUrl = "https://oil-doorstep-vitamins.ngrok-free.dev/api/"
+
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create())

@@ -16,7 +16,7 @@ import com.example.techguardian2.ui.viewmodels.LoginViewModel
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (String) -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -38,7 +38,7 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Acceso para Técnicos",
+                text = "Acceso al Sistema",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 32.dp)
             )
@@ -66,8 +66,8 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    viewModel.performLogin(username, password) {
-                        onLoginSuccess()
+                    viewModel.performLogin(username, password) { role ->
+                        onLoginSuccess(role)
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp)
