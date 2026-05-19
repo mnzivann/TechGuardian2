@@ -25,7 +25,7 @@ Construida sin frameworks pesados para un rendimiento ágil y control total sobr
 * **Arquitectura:** REST (Representational State Transfer)
 * **Comunicación:** JSON
 
-## 🚀 Configuración Inicial
+## Configuración Inicial
 Para ejecutar este proyecto en tu entorno local:
 
 1. **Clonar el repositorio:** Descarga el código en tu máquina local.
