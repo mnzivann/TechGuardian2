@@ -39,12 +39,32 @@ object AppModule {
     @Provides
     @Singleton
     fun provideApiService(): ApiService {
-        // URL pública y segura de Ngrok (ya no importa si cambia tu IP local)
         val baseUrl = "https://oil-doorstep-vitamins.ngrok-free.dev/api/"
 
-        return Retrofit.Builder()
+        // 1. Creamos un administrador de confianza que acepta TODOS los certificados
+        val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(
+            object : javax.net.ssl.X509TrustManager {
+                override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+                override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
+                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+            }
+        )
+
+        // 2. Instalamos este administrador en un contexto SSL
+        val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
+        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+
+        // 3. Construimos un cliente HTTP que use nuestro contexto relajado
+        val okHttpClient = okhttp3.OkHttpClient.Builder()
+            .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
+            .hostnameVerifier { _, _ -> true }
+            .build()
+
+        // 4. Se lo pasamos a Retrofit
+        return retrofit2.Retrofit.Builder()
             .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create())
+            .client(okHttpClient) // <--- Aquí le decimos que use el cliente sin restricciones
+            .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
     }
