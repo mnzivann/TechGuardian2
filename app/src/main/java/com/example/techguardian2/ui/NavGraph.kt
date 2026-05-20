@@ -27,8 +27,16 @@ fun NavGraph() {
             )
         }
 
+        // NUEVO: Rutas actualizadas para el AdminPanelScreen
         composable("admin_panel") {
-            AdminPanelScreen(onNavigateBack = { navController.popBackStack() })
+            AdminPanelScreen(
+                onLogout = {
+                    // Navega a login y limpia el historial de navegación por seguridad
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable("tech_dashboard") {
