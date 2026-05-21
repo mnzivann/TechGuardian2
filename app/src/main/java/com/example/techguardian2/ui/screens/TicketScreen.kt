@@ -120,13 +120,12 @@ fun TicketScreen(
                     cargando = true
                     val fotoEnTexto = encodeImageToBase64(context, imageUri!!)
 
-                    // Aquí enviamos la descripción, la foto y un nombre por defecto del usuario
-                    // Así se envía correctamente a la nueva función:
-                    viewModel.enviarReporte(description, fotoEnTexto, "Usuario de Oficina") { exito ->
+                    // Solo enviamos descripción y foto, el ViewModel pone el nombre
+                    viewModel.enviarReporte(description, fotoEnTexto) { exito ->
                         cargando = false
                         if (exito) {
                             Toast.makeText(context, "Reporte enviado exitosamente", Toast.LENGTH_SHORT).show()
-                            onNavigateBack() // Cierra la pantalla
+                            onNavigateBack()
                         } else {
                             Toast.makeText(context, "Error al conectar con el servidor", Toast.LENGTH_LONG).show()
                         }

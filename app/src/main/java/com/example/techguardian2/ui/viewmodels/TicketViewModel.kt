@@ -16,13 +16,17 @@ class TicketViewModel @Inject constructor(
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
-    // Ahora la función acepta el parámetro 'reporter'
-    fun enviarReporte(description: String, fotoBase64: String, reporter: String, onResultado: (Boolean) -> Unit) {
+    // Ya no pedimos el 'reporter' desde la pantalla, el ViewModel lo descubre solo
+    fun enviarReporte(description: String, fotoBase64: String, onResultado: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
+                // El token ahora es algo como "oficina1|usuario"
                 val token = tokenManager.token.first() ?: ""
-                // Le pasamos los 3 datos exactos que pide tu API
-                val response = apiService.enviarTicket(token, TicketRequestDto(description, fotoBase64, reporter))
+
+                // Cortamos el texto antes de la línea vertical para sacar el nombre de usuario
+                val username = token.substringBefore("|")
+
+                val response = apiService.enviarTicket(token, TicketRequestDto(description, fotoBase64, username))
                 onResultado(response.success)
             } catch (e: Exception) {
                 e.printStackTrace()
