@@ -27,16 +27,18 @@ import com.example.techguardian2.ui.viewmodels.TicketViewModel
 import java.io.ByteArrayOutputStream
 import java.io.File
 
+// Generar archivo temporal para la cámara
 fun Context.createImageUri(): Uri {
     val imageFile = File(cacheDir, "ticket_img_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(this, "$packageName.provider", imageFile)
 }
 
+// Comprimir y convertir foto a Base64 para el backend
 fun encodeImageToBase64(context: Context, uri: Uri): String {
     val inputStream = context.contentResolver.openInputStream(uri)
     val bitmap = BitmapFactory.decodeStream(inputStream)
     val outputStream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 40, outputStream) // Comprimido un poco más para fluidez
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 40, outputStream)
     val bytes = outputStream.toByteArray()
     return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
@@ -118,11 +120,13 @@ fun TicketScreen(
                     cargando = true
                     val fotoEnTexto = encodeImageToBase64(context, imageUri!!)
 
-                    viewModel.enviarReporte(description, fotoEnTexto) { exito ->
+                    // Aquí enviamos la descripción, la foto y un nombre por defecto del usuario
+                    // Así se envía correctamente a la nueva función:
+                    viewModel.enviarReporte(description, fotoEnTexto, "Usuario de Oficina") { exito ->
                         cargando = false
                         if (exito) {
                             Toast.makeText(context, "Reporte enviado exitosamente", Toast.LENGTH_SHORT).show()
-                            onNavigateBack() // <--- CIERRA LA PANTALLA AL TENER ÉXITO
+                            onNavigateBack() // Cierra la pantalla
                         } else {
                             Toast.makeText(context, "Error al conectar con el servidor", Toast.LENGTH_LONG).show()
                         }
