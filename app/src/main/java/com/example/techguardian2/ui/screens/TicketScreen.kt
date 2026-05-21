@@ -21,22 +21,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
+import com.example.techguardian2.ui.viewmodels.TicketViewModel
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-// 1. Generar archivo temporal para la cámara
 fun Context.createImageUri(): Uri {
     val imageFile = File(cacheDir, "ticket_img_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(this, "$packageName.provider", imageFile)
 }
 
-// 2. Comprimir y convertir foto a Base64 para el backend
 fun encodeImageToBase64(context: Context, uri: Uri): String {
     val inputStream = context.contentResolver.openInputStream(uri)
     val bitmap = BitmapFactory.decodeStream(inputStream)
     val outputStream = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 40, outputStream) // Comprimido un poco más para fluidez
     val bytes = outputStream.toByteArray()
     return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
@@ -44,29 +44,25 @@ fun encodeImageToBase64(context: Context, uri: Uri): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TicketScreen(
-    onNavigateBack: () -> Unit
-    // viewModel: TicketViewModel = hiltViewModel() -> Descomentar al integrar con Retrofit
+    onNavigateBack: () -> Unit,
+    viewModel: TicketViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     var description by remember { mutableStateOf("") }
-
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var tempUri by remember { mutableStateOf<Uri?>(null) }
+    var cargando by remember { mutableStateOf(false) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            imageUri = tempUri
-        }
-    }
+    ) { success -> if (success) imageUri = tempUri }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Reportar Falla") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onNavigateBack, enabled = !cargando) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
                     }
                 }
@@ -80,9 +76,9 @@ fun TicketScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Describe el problema") },
+                label = { Text("Describe el problema de forma detallada") },
                 modifier = Modifier.fillMaxWidth().height(120.dp),
-                maxLines = 4
+                enabled = !cargando
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -93,9 +89,10 @@ fun TicketScreen(
                     tempUri = newUri
                     cameraLauncher.launch(newUri)
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !cargando
             ) {
-                Text(if (imageUri == null) "Tomar Fotografía del Equipo" else "Volver a tomar foto")
+                Text(if (imageUri == null) "Tomar Fotografía" else "Cambiar fotografía")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -103,29 +100,36 @@ fun TicketScreen(
             imageUri?.let { uri ->
                 Image(
                     painter = rememberAsyncImagePainter(uri),
-                    contentDescription = "Evidencia fotográfica",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(250.dp)
-                        .clip(RoundedCornerShape(8.dp)),
+                    contentDescription = "Evidencia",
+                    modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
+            if (cargando) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Button(
                 onClick = {
+                    cargando = true
                     val fotoEnTexto = encodeImageToBase64(context, imageUri!!)
 
-                    // TODO: Reemplazar por la llamada a tu API Retrofit
-                    // viewModel.enviarTicket(description, fotoEnTexto)
-
-                    Toast.makeText(context, "Preparando envío a Java...", Toast.LENGTH_SHORT).show()
-                    println("¡Foto comprimida y lista para volar a Java!")
+                    viewModel.enviarReporte(description, fotoEnTexto) { exito ->
+                        cargando = false
+                        if (exito) {
+                            Toast.makeText(context, "Reporte enviado exitosamente", Toast.LENGTH_SHORT).show()
+                            onNavigateBack() // <--- CIERRA LA PANTALLA AL TENER ÉXITO
+                        } else {
+                            Toast.makeText(context, "Error al conectar con el servidor", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = description.isNotBlank() && imageUri != null
+                enabled = description.isNotBlank() && imageUri != null && !cargando
             ) {
                 Text("Enviar Reporte a Técnicos")
             }

@@ -8,7 +8,7 @@ interface ApiService {
     @POST("login")
     suspend fun loginUsuario(@Body request: LoginRequestDto): LoginResponseDto
 
-    // --- NUEVAS RUTAS CRUD DE USUARIOS ---
+    // --- CRUD DE USUARIOS ---
     @Headers("ngrok-skip-browser-warning: true")
     @GET("users")
     suspend fun getUsers(@Header("Authorization") token: String): List<UserDto>
@@ -24,22 +24,25 @@ interface ApiService {
     @Headers("ngrok-skip-browser-warning: true")
     @DELETE("users/{id}")
     suspend fun deleteUser(@Header("Authorization") token: String, @Path("id") id: Int): GenericResponseDto
-    // -------------------------------------
 
-    @Headers("ngrok-skip-browser-warning: true")
-    @GET("assets")
-    suspend fun getRemoteAssets(@Header("Authorization") token: String): List<AssetDto>
-
+    // --- NUEVAS RUTAS PARA REPORTES (TICKETS) ---
     @Headers("ngrok-skip-browser-warning: true")
     @POST("tickets")
-    suspend fun sendMaintenanceTicket(@Header("Authorization") token: String, @Body ticket: TicketDto): GenericResponseDto
+    suspend fun enviarTicket(@Header("Authorization") token: String, @Body ticketRequest: TicketRequestDto): GenericResponseDto
+
+    @Headers("ngrok-skip-browser-warning: true")
+    @GET("tickets")
+    suspend fun obtenerTickets(@Header("Authorization") token: String): List<TicketResponseDto>
 }
 
-// DTOs
-data class UserDto(val id: Int, val fullName: String, val username: String, val role: String)
+// DTOs necesarios
 data class LoginRequestDto(val username: String, val password: String)
 data class LoginResponseDto(val success: Boolean, val role: String, val token: String)
+data class UserDto(val id: Int, val fullName: String, val username: String, val role: String)
 data class CreateUserDto(val fullName: String, val username: String, val password: String, val role: String)
 data class GenericResponseDto(val success: Boolean, val message: String)
 data class AssetDto(val id: Int, val name: String, val status: String, val serial_number: String)
-data class TicketDto(val asset_id: Int, val description: String, val technician_id: Int)
+
+// DTOs de Reportes
+data class TicketRequestDto(val description: String, val image: String)
+data class TicketResponseDto(val id: Int, val description: String, val image: String, val status: String)
