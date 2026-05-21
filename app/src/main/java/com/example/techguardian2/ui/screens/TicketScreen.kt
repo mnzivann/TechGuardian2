@@ -1,7 +1,11 @@
 package com.example.techguardian2.ui.screens
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -18,32 +22,42 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
+import java.io.ByteArrayOutputStream
 import java.io.File
 
-// Función para generar un archivo temporal seguro para la cámara
+// 1. Generar archivo temporal para la cámara
 fun Context.createImageUri(): Uri {
     val imageFile = File(cacheDir, "ticket_img_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(this, "$packageName.provider", imageFile)
+}
+
+// 2. Comprimir y convertir foto a Base64 para el backend
+fun encodeImageToBase64(context: Context, uri: Uri): String {
+    val inputStream = context.contentResolver.openInputStream(uri)
+    val bitmap = BitmapFactory.decodeStream(inputStream)
+    val outputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
+    val bytes = outputStream.toByteArray()
+    return Base64.encodeToString(bytes, Base64.NO_WRAP)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TicketScreen(
     onNavigateBack: () -> Unit
+    // viewModel: TicketViewModel = hiltViewModel() -> Descomentar al integrar con Retrofit
 ) {
     val context = LocalContext.current
     var description by remember { mutableStateOf("") }
 
-    // Variables para manejar la imagen
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var tempUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Lanzador nativo de la cámara
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            imageUri = tempUri // Si el usuario aceptó la foto, la guardamos para mostrarla
+            imageUri = tempUri
         }
     }
 
@@ -73,7 +87,6 @@ fun TicketScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botón para abrir la cámara
             Button(
                 onClick = {
                     val newUri = context.createImageUri()
@@ -87,7 +100,6 @@ fun TicketScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Previsualización de la foto usando Coil
             imageUri?.let { uri ->
                 Image(
                     painter = rememberAsyncImagePainter(uri),
@@ -102,9 +114,16 @@ fun TicketScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Botón final (La conexión a Java la haremos en el siguiente paso)
             Button(
-                onClick = { /* Aquí enviaremos el ticket y la foto al servidor Java */ },
+                onClick = {
+                    val fotoEnTexto = encodeImageToBase64(context, imageUri!!)
+
+                    // TODO: Reemplazar por la llamada a tu API Retrofit
+                    // viewModel.enviarTicket(description, fotoEnTexto)
+
+                    Toast.makeText(context, "Preparando envío a Java...", Toast.LENGTH_SHORT).show()
+                    println("¡Foto comprimida y lista para volar a Java!")
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = description.isNotBlank() && imageUri != null
             ) {
