@@ -61,7 +61,7 @@ fun AssetListScreen(
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Panel TechGuardian") }) },
+        topBar = { TopAppBar(title = { Text("Panel Oficina") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToTicket) {
                 Icon(Icons.Default.Add, contentDescription = "Reportar Falla")
