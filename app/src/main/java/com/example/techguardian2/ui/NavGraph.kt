@@ -57,8 +57,13 @@ fun NavGraph(
         composable("oficina_panel") {
             AssetListScreen(
                 onNavigateToTicket = {
-                    // Al tocar el botón flotante (+), abre la cámara
                     navController.navigate("ticket_screen")
+                },
+                onLogout = {
+                    // Al confirmar la salida, limpia el historial y regresa al login
+                    navController.navigate("login") {
+                        popUpTo(0)
+                    }
                 }
             )
         }
@@ -75,7 +80,14 @@ fun NavGraph(
 
         // 5. PANTALLA DEL TÉCNICO (Mesa de Soporte)
         composable("tecnico_panel") {
-            TechDashboardScreen()
+            TechDashboardScreen(
+                onLogout = {
+                    // Al confirmar la salida, limpia el historial y regresa al login
+                    navController.navigate("login") {
+                        popUpTo(0)
+                    }
+                }
+            )
         }
 
     }

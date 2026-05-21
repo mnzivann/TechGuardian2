@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,34 +23,67 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.techguardian2.data.remote.TicketResponseDto
 import com.example.techguardian2.ui.viewmodels.TechnicianViewModel
 
-// Helper para transformar el String de Java en una imagen Bitmap de Android
 @Composable
 fun rememberBase64Decoder(base64String: String): Bitmap? {
     return remember(base64String) {
         try {
             val bytes = Base64.decode(base64String, Base64.DEFAULT)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        } catch (e: Exception) {
-            null
-        }
+        } catch (e: Exception) { null }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TechDashboardScreen(
-    onNavigateToDetail: (Int) -> Unit = {}, // Mantenemos tu parámetro por si lo usas después
+    onNavigateToDetail: (Int) -> Unit = {},
+    onLogout: () -> Unit = {}, // <-- Agregamos este parámetro para conectar la salida
     viewModel: TechnicianViewModel = hiltViewModel()
 ) {
     val tickets by viewModel.tickets.collectAsState()
     val cargando by viewModel.cargando.collectAsState()
+    var mostrarDialogo by remember { mutableStateOf(false) } // Controla la alerta flotante
 
     LaunchedEffect(Unit) {
         viewModel.cargarTickets()
     }
 
+    // --- DIÁLOGO DE CONFIRMACIÓN ---
+    if (mostrarDialogo) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogo = false },
+            title = { Text("Cerrar Sesión") },
+            text = { Text("¿Estás seguro de que deseas salir del panel técnico?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarDialogo = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, cerrar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { mostrarDialogo = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Mesa de Soporte Técnico") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Mesa de Soporte Técnico") },
+                actions = {
+                    IconButton(onClick = { mostrarDialogo = true }) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar Sesión", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            )
+        }
     ) { padding ->
         if (cargando) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -103,7 +138,6 @@ fun CardTicketTecnico(
             Text(ticket.description, style = MaterialTheme.typography.bodyMedium)
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Renderizado de la Evidencia Fotográfica
             val bitmap = rememberBase64Decoder(ticket.image)
             bitmap?.let {
                 Image(
@@ -115,7 +149,6 @@ fun CardTicketTecnico(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Flujo de Acciones del Técnico
             when (ticket.status) {
                 "recibido" -> {
                     Button(
