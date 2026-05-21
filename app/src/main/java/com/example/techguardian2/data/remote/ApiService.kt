@@ -33,6 +33,11 @@ interface ApiService {
     @Headers("ngrok-skip-browser-warning: true")
     @GET("tickets")
     suspend fun obtenerTickets(@Header("Authorization") token: String): List<TicketResponseDto>
+
+    // ---> AGREGA ESTAS DOS LÍNEAS AQUÍ <---
+    @Headers("ngrok-skip-browser-warning: true")
+    @GET("assets")
+    suspend fun getRemoteAssets(@Header("Authorization") token: String): List<AssetDto>
 }
 
 // DTOs necesarios
