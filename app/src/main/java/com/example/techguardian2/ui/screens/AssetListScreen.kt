@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,12 +17,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.techguardian2.data.remote.ApiService
 import com.example.techguardian2.data.remote.TicketResponseDto
 import com.example.techguardian2.data.repository.MainRepository
 import com.example.techguardian2.data.security.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -29,7 +28,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// --- 1. EL VIEWMODEL QUE FALTABA ---
+// --- 1. EL VIEWMODEL EN MODO DEPURACIÓN (FILTRO APAGADO) ---
 
 @HiltViewModel
 class InventarioViewModel @Inject constructor(
@@ -37,21 +36,22 @@ class InventarioViewModel @Inject constructor(
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
-    // Leemos SIEMPRE del celular. Es instantáneo y funciona offline.
-    val tickets: StateFlow<List<TicketResponseDto>> = repository.offlineTickets
+    // Dejamos pasar TODOS los tickets para ver qué llega realmente del servidor
+    val misTickets: StateFlow<List<TicketResponseDto>> = repository.offlineTickets
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun cargarDatos() {
         viewModelScope.launch {
             val token = tokenManager.token.first() ?: ""
-            repository.syncTickets(token) // Intenta actualizar en silencio
+            repository.syncTickets(token)
         }
     }
 
-    // Nueva función para borrar la sesión
-    fun cerrarSesion() {
+    fun cerrarSesion(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            tokenManager.saveToken("") // Vacía el token
+            tokenManager.saveToken("")
+            repository.limpiarSesion()
+            onSuccess()
         }
     }
 }
@@ -66,13 +66,12 @@ fun AssetListScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     var mostrarDialogo by remember { mutableStateOf(false) }
-    val ticketsList by viewModel.tickets.collectAsState()
+    val ticketsList by viewModel.misTickets.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.cargarDatos()
     }
 
-    // --- DIÁLOGO DE CONFIRMACIÓN ---
     if (mostrarDialogo) {
         AlertDialog(
             onDismissRequest = { mostrarDialogo = false },
@@ -82,7 +81,9 @@ fun AssetListScreen(
                 Button(
                     onClick = {
                         mostrarDialogo = false
-                        onLogout()
+                        viewModel.cerrarSesion {
+                            onLogout()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -102,6 +103,9 @@ fun AssetListScreen(
             TopAppBar(
                 title = { Text("Panel TechGuardian") },
                 actions = {
+                    IconButton(onClick = { viewModel.cargarDatos() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar Reportes")
+                    }
                     IconButton(onClick = { mostrarDialogo = true }) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar Sesión", tint = MaterialTheme.colorScheme.error)
                     }
@@ -117,19 +121,50 @@ fun AssetListScreen(
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Equipos") })
-                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Mis Reportes") })
+
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = {
+                        selectedTab = 1
+                        viewModel.cargarDatos()
+                    },
+                    text = { Text("Mis Reportes") }
+                )
             }
 
             if (selectedTab == 0) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Impresora HP Laser", style = MaterialTheme.typography.titleMedium)
-                            Text("S/N: HP-99211A - Estado: Activo", style = MaterialTheme.typography.bodyMedium)
+                // La misma lista maestra para que coincida perfectamente
+                val equiposDisponibles = listOf("Impresora HP Laser", "MacBook Air M1", "Router Cisco RT-500", "Monitor Dell 27\"")
+
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+                    items(equiposDisponibles) { equipo ->
+
+                        // --- ESTADO DINÁMICO ---
+                        // Buscamos si existe un reporte activo para este equipo en específico
+                        val tieneFallaActiva = ticketsList.any { ticket ->
+                            ticket.description.startsWith("[$equipo]") && ticket.status != "resuelto"
+                        }
+
+                        // Cambiamos texto y color en tiempo real sin tocar bases de datos extra
+                        val estadoTexto = if (tieneFallaActiva) "Inactivo (Reporte Abierto)" else "Activo"
+                        val colorEstado = if (tieneFallaActiva) Color(0xFFF44336) else Color(0xFF4CAF50)
+
+                        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(equipo, style = MaterialTheme.typography.titleMedium)
+                                    Text("Estado actual: $estadoTexto", style = MaterialTheme.typography.bodyMedium, color = colorEstado)
+                                }
+                            }
                         }
                     }
                 }
-            } else {
+            }
+            else {
                 LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
                     if (ticketsList.isEmpty()) {
                         item { Text("No tienes reportes de falla activos.", modifier = Modifier.padding(16.dp)) }
@@ -143,6 +178,10 @@ fun AssetListScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text("Reporte #${ticket.id}", style = MaterialTheme.typography.titleMedium)
+
+                                    // --- LÍNEA CHISMOSA PARA VER QUÉ MANDA JAVA ---
+                                    Text("Dueño según el servidor: ${ticket.reporter}", color = Color.Red, style = MaterialTheme.typography.bodySmall)
+
                                     Text(ticket.description, style = MaterialTheme.typography.bodyMedium)
                                 }
 

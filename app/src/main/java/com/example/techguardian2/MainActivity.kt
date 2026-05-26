@@ -3,9 +3,9 @@ package com.example.techguardian2
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
 import com.example.techguardian2.data.security.TokenManager
 import com.example.techguardian2.ui.NavGraph
-import com.example.techguardian2.ui.theme.TechGuardianTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -35,7 +35,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            TechGuardianTheme {
+            // Utilizamos el tema nativo de Material 3 en lugar del personalizado
+            MaterialTheme {
                 NavGraph(startDestination = startDest)
             }
         }

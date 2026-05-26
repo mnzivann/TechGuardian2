@@ -46,7 +46,11 @@ class TechnicianViewModel @Inject constructor(
         }
     }
 
-    fun cerrarSesion() {
-        viewModelScope.launch { tokenManager.saveToken("") }
+    fun cerrarSesion(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            tokenManager.saveToken("") // 1. Destruye la llave de acceso
+            repository.limpiarSesion() // 2. Borra los reportes locales
+            onSuccess()                // 3. Ahora sí, lo manda al Login
+        }
     }
 }

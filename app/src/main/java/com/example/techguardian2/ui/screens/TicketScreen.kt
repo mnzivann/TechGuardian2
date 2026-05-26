@@ -9,14 +9,17 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -27,13 +30,11 @@ import com.example.techguardian2.ui.viewmodels.TicketViewModel
 import java.io.ByteArrayOutputStream
 import java.io.File
 
-// Generar archivo temporal para la cámara
 fun Context.createImageUri(): Uri {
     val imageFile = File(cacheDir, "ticket_img_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(this, "$packageName.provider", imageFile)
 }
 
-// Comprimir y convertir foto a Base64 para el backend
 fun encodeImageToBase64(context: Context, uri: Uri): String {
     val inputStream = context.contentResolver.openInputStream(uri)
     val bitmap = BitmapFactory.decodeStream(inputStream)
@@ -50,6 +51,12 @@ fun TicketScreen(
     viewModel: TicketViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+
+    // --- LISTA MAESTRA DE EQUIPOS ---
+    val equiposDisponibles = listOf("Impresora HP Laser", "MacBook Air M1", "Router Cisco RT-500", "Monitor Dell 27\"")
+
+    var selectedEquipo by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var tempUri by remember { mutableStateOf<Uri?>(null) }
@@ -75,6 +82,42 @@ fun TicketScreen(
             Text("Detalles del equipo dañado", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- SELECTOR DE EQUIPO OBLIGATORIO ---
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = selectedEquipo.ifEmpty { "Selecciona el equipo dañado..." },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Equipo afectado (Obligatorio)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = "Desplegar") },
+                    enabled = !cargando
+                )
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clickable { if (!cargando) expanded = true }
+                )
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                ) {
+                    equiposDisponibles.forEach { equipo ->
+                        DropdownMenuItem(
+                            text = { Text(equipo) },
+                            onClick = {
+                                selectedEquipo = equipo
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- DESCRIPCIÓN ---
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -85,6 +128,7 @@ fun TicketScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- FOTO OPCIONAL ---
             Button(
                 onClick = {
                     val newUri = context.createImageUri()
@@ -94,7 +138,7 @@ fun TicketScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !cargando
             ) {
-                Text(if (imageUri == null) "Tomar Fotografía" else "Cambiar fotografía")
+                Text(if (imageUri == null) "Tomar Fotografía (Opcional)" else "Cambiar fotografía")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -103,7 +147,7 @@ fun TicketScreen(
                 Image(
                     painter = rememberAsyncImagePainter(uri),
                     contentDescription = "Evidencia",
-                    modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)),
+                    modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -115,24 +159,28 @@ fun TicketScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
+            // --- BOTÓN DE ENVIAR (Validación Estricta) ---
             Button(
                 onClick = {
                     cargando = true
-                    val fotoEnTexto = encodeImageToBase64(context, imageUri!!)
+                    val fotoEnTexto = if (imageUri != null) encodeImageToBase64(context, imageUri!!) else ""
 
-                    // Solo enviamos descripción y foto, el ViewModel pone el nombre
-                    viewModel.enviarReporte(description, fotoEnTexto) { exito ->
+                    // Unimos el equipo y la descripción para que la pestaña de Equipos lo pueda leer
+                    val reporteFinal = "[$selectedEquipo] $description"
+
+                    viewModel.enviarReporte(reporteFinal, fotoEnTexto) { exito ->
                         cargando = false
                         if (exito) {
-                            Toast.makeText(context, "Reporte enviado exitosamente", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Reporte enviado a técnicos", Toast.LENGTH_SHORT).show()
                             onNavigateBack()
                         } else {
-                            Toast.makeText(context, "Error al conectar con el servidor", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Error de conexión", Toast.LENGTH_LONG).show()
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = description.isNotBlank() && imageUri != null && !cargando
+                // MAGIA: El botón solo prende si seleccionó equipo Y escribió problema
+                enabled = selectedEquipo.isNotBlank() && description.isNotBlank() && !cargando
             ) {
                 Text("Enviar Reporte a Técnicos")
             }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,15 +38,14 @@ fun rememberBase64Decoder(base64String: String): Bitmap? {
 @Composable
 fun TechDashboardScreen(
     onNavigateToDetail: (Int) -> Unit = {},
-    onLogout: () -> Unit = {}, // <-- Agregamos este parámetro para conectar la salida
+    onLogout: () -> Unit = {},
     viewModel: TechnicianViewModel = hiltViewModel()
 ) {
     val tickets by viewModel.tickets.collectAsState()
-    val cargando by viewModel.cargando.collectAsState()
-    var mostrarDialogo by remember { mutableStateOf(false) } // Controla la alerta flotante
+    var mostrarDialogo by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        viewModel.cargarTickets()
+        viewModel.cargarTickets() // Esto ahora sincroniza en segundo plano sin interrumpir la pantalla
     }
 
     // --- DIÁLOGO DE CONFIRMACIÓN ---
@@ -58,7 +58,10 @@ fun TechDashboardScreen(
                 Button(
                     onClick = {
                         mostrarDialogo = false
-                        onLogout()
+                        // Metemos el onLogout dentro de las llaves para que espere
+                        viewModel.cerrarSesion {
+                            onLogout()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -78,30 +81,32 @@ fun TechDashboardScreen(
             TopAppBar(
                 title = { Text("Mesa de Soporte Técnico") },
                 actions = {
+                    // --- NUEVO BOTÓN PARA ACTUALIZAR EN VIVO ---
+                    IconButton(onClick = { viewModel.cargarTickets() }) {
+                        // Asegúrate de importar androidx.compose.material.icons.filled.Refresh
+                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar Reportes")
+                    }
+
                     IconButton(onClick = { mostrarDialogo = true }) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Cerrar Sesión", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             )
         }
-    ) { padding ->
-        if (cargando) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+    )
+    { padding ->
+        // Como Room es instantáneo, quitamos la pantalla de carga y mostramos la lista directo
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            if (tickets.isEmpty()) {
+                item { Text("No hay reportes de falla en el sistema.") }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                if (tickets.isEmpty()) {
-                    item { Text("No hay reportes de falla en el sistema.") }
-                }
-                items(tickets) { ticket ->
-                    CardTicketTecnico(ticket = ticket, onEstadoCambiado = { nuevoEstado ->
-                        viewModel.actualizarEstado(ticket.id, nuevoEstado)
-                    })
-                }
+            items(tickets) { ticket ->
+                CardTicketTecnico(ticket = ticket, onEstadoCambiado = { nuevoEstado ->
+                    viewModel.actualizarEstado(ticket.id, nuevoEstado)
+                })
             }
         }
     }
