@@ -18,29 +18,40 @@ import androidx.lifecycle.viewModelScope
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.techguardian2.data.remote.ApiService
 import com.example.techguardian2.data.remote.TicketResponseDto
+import com.example.techguardian2.data.repository.MainRepository
 import com.example.techguardian2.data.security.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 // --- 1. EL VIEWMODEL QUE FALTABA ---
+
 @HiltViewModel
 class InventarioViewModel @Inject constructor(
-    private val apiService: ApiService,
+    private val repository: MainRepository,
     private val tokenManager: TokenManager
 ) : ViewModel() {
-    private val _tickets = MutableStateFlow<List<TicketResponseDto>>(emptyList())
-    val tickets: StateFlow<List<TicketResponseDto>> = _tickets
+
+    // Leemos SIEMPRE del celular. Es instantáneo y funciona offline.
+    val tickets: StateFlow<List<TicketResponseDto>> = repository.offlineTickets
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun cargarDatos() {
         viewModelScope.launch {
-            try {
-                val token = tokenManager.token.first() ?: ""
-                _tickets.value = apiService.obtenerTickets(token)
-            } catch (e: Exception) { e.printStackTrace() }
+            val token = tokenManager.token.first() ?: ""
+            repository.syncTickets(token) // Intenta actualizar en silencio
+        }
+    }
+
+    // Nueva función para borrar la sesión
+    fun cerrarSesion() {
+        viewModelScope.launch {
+            tokenManager.saveToken("") // Vacía el token
         }
     }
 }

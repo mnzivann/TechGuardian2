@@ -5,37 +5,30 @@ import androidx.lifecycle.viewModelScope
 import com.example.techguardian2.data.remote.ApiService
 import com.example.techguardian2.data.remote.TicketResponseDto
 import com.example.techguardian2.data.remote.UpdateStatusDto
+import com.example.techguardian2.data.repository.MainRepository
 import com.example.techguardian2.data.security.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class TechnicianViewModel @Inject constructor(
+    private val repository: MainRepository,
     private val apiService: ApiService,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
-    private val _tickets = MutableStateFlow<List<TicketResponseDto>>(emptyList())
-    val tickets: StateFlow<List<TicketResponseDto>> = _tickets
-
-    private val _cargando = MutableStateFlow(false)
-    val cargando: StateFlow<Boolean> = _cargando
+    val tickets: StateFlow<List<TicketResponseDto>> = repository.offlineTickets
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun cargarTickets() {
         viewModelScope.launch {
-            _cargando.value = true
-            try {
-                val token = tokenManager.token.first() ?: ""
-                _tickets.value = apiService.obtenerTickets(token)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _cargando.value = false
-            }
+            val token = tokenManager.token.first() ?: ""
+            repository.syncTickets(token)
         }
     }
 
@@ -45,11 +38,15 @@ class TechnicianViewModel @Inject constructor(
                 val token = tokenManager.token.first() ?: ""
                 val response = apiService.actualizarEstadoTicket(token, ticketId, UpdateStatusDto(nuevoEstado))
                 if (response.success) {
-                    cargarTickets() // Recargar lista automáticamente al mutar
+                    repository.syncTickets(token)
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.printStackTrace() // Offline: no se puede actualizar
             }
         }
+    }
+
+    fun cerrarSesion() {
+        viewModelScope.launch { tokenManager.saveToken("") }
     }
 }
